@@ -14,7 +14,7 @@ SailFish OS 5.3.0.10 fastboot 刷机包，并通过 GitHub Actions 发布到 Rel
 | `flash.sh` | 一键刷机（合并分片→校验→解压→fastboot 刷入） |
 | `join-and-verify.sh` | 只合并分片+校验+解压 |
 | `SHA256SUMS` | 校验和 |
-| `README-刷机说明.md` | 详细说明 |
+| `README.md` | 详细说明 |
 
 刷机（Linux/macOS，需已安装 fastboot / android-tools）：
 

@@ -40,9 +40,9 @@ chmod +x "$PKG/flash.sh"
 cp "$BASE/join-and-verify.sh" "$PKG/join-and-verify.sh"
 chmod +x "$PKG/join-and-verify.sh"
 sed -e "s/@DEVICE@/$DEVICE/g" -e "s/@DEVNAME@/$DEVNAME/g" \
-    "$BASE/README-package.md.tmpl" > "$PKG/README-刷机说明.md"
+    "$BASE/README-package.md.tmpl" > "$PKG/README.md"
 
 echo "== checksums =="
-( cd "$PKG" && sha256sum boot.img userdata.img.gz.part-* flash.sh join-and-verify.sh README-刷机说明.md > SHA256SUMS )
+( cd "$PKG" && sha256sum boot.img userdata.img.gz.part-* flash.sh join-and-verify.sh README.md > SHA256SUMS )
 cat "$PKG/SHA256SUMS"
 ls -l "$PKG"

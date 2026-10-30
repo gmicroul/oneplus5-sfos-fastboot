@@ -63,7 +63,7 @@ jobs:
           else
             gh release create "$TAG" \
               --title "Fastboot package: dumpling (OnePlus 5T) 5.3.0.10" \
-              --notes-file out/pkg/README-刷机说明.md \
+              --notes-file out/pkg/README.md \
               --latest=false \
               out/pkg/*
           fi
