@@ -1,0 +1,69 @@
+#!/bin/sh
+# fastboot 刷机脚本 (device: @DEVICE@)
+# 用法: 手机进入 fastboot (关机后按住 音量上 + 电源)，连上电脑，运行 sh flash.sh
+set -e
+
+if ! command -v fastboot >/dev/null 2>&1; then
+    echo "错误: 未找到 fastboot 命令（请先安装 android-tools）"
+    exit 1
+fi
+
+product=$(fastboot getvar product 2>&1 | head -n 1 | sed 's/^product: //')
+case "$product" in
+    *oneplus5t*|*dumpling*)
+        if [ "@DEVICE@" != "dumpling" ]; then
+            echo "错误: 检测到一加5T (product=$product)，请使用 dumpling 刷机包"
+            exit 1
+        fi
+        ;;
+    *oneplus5*|*cheeseburger*)
+        if [ "@DEVICE@" != "cheeseburger" ]; then
+            echo "错误: 检测到一加5 (product=$product)，请使用 cheeseburger 刷机包"
+            exit 1
+        fi
+        ;;
+    *)
+        echo "错误: 设备不是一加5/5T (product=$product)，已中止"
+        exit 1
+        ;;
+esac
+
+if [ ! -f userdata.img ]; then
+    if ls userdata.img.gz.part-* >/dev/null 2>&1; then
+        echo "== 合并分片 =="
+        cat userdata.img.gz.part-* > userdata.img.gz
+        echo "== 校验 =="
+        sha256sum -c SHA256SUMS --ignore-missing || { echo "校验失败"; exit 1; }
+        echo "== 解压 =="
+        gunzip -kf userdata.img.gz
+    else
+        echo "错误: 缺少 userdata.img 或其分片 (userdata.img.gz.part-*)"
+        exit 1
+    fi
+fi
+
+echo "即将刷入 (@DEVICE@):"
+echo "  boot.img      -> boot 分区"
+echo "  userdata.img  -> userdata 分区 (会覆盖 userdata 上全部数据)"
+echo "注意: 切勿执行 fastboot format userdata"
+printf "继续? [y/N] "
+read -r ans
+case "$ans" in
+    y|Y) ;;
+    *) echo "已取消"; exit 1 ;;
+esac
+
+echo "== 刷写 boot =="
+fastboot flash boot boot.img || { echo "错误: boot 刷写失败"; exit 2; }
+
+echo "== 刷写 userdata (约需数分钟，请勿断开) =="
+fastboot -S 256M flash userdata userdata.img || { echo "错误: userdata 刷写失败"; exit 3; }
+
+printf "刷写完成。现在重启? [Y/n] "
+read -r ans
+case "$ans" in
+    n|N) exit 0 ;;
+    *) fastboot reboot ;;
+esac
+echo "已发送重启。首次开机较慢（会扩展 userdata 并进入初始向导），请耐心等待。"
+exit 0

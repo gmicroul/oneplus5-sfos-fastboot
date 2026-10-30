@@ -1,0 +1,69 @@
+name: Build dumpling fastboot package
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag to create/update"
+        required: true
+        default: "fastboot-dumpling-5.3.0.10"
+      source_tag:
+        description: "Sources release tag containing the rootfs snapshot"
+        required: true
+        default: "sources-5.3.0.10"
+      snapshot_name:
+        description: "Snapshot asset file name"
+        required: true
+        default: "rootfs-snapshot-clean-5.3.0.10.tar.gz"
+      snapshot_sha256:
+        description: "sha256 of the snapshot asset"
+        required: true
+        default: "81a9e2e32786f476e178eefe9071d592c4c3026dc4a18529f062d80b0f2f9ffd"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache
+          sudo apt-get clean
+          df -h /
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq e2fsprogs pigz libcap2-bin
+
+      - name: Download rootfs snapshot
+        run: |
+          curl -L --fail --retry 3 -o snapshot.tar.gz \
+            "https://github.com/${{ github.repository }}/releases/download/${{ inputs.source_tag }}/${{ inputs.snapshot_name }}"
+          echo "${{ inputs.snapshot_sha256 }}  snapshot.tar.gz" | sha256sum -c -
+
+      - name: Build userdata.img (dumpling)
+        run: sudo bash fastboot/build-userdata.sh dumpling snapshot.tar.gz out
+
+      - name: Package
+        run: sudo bash fastboot/make-package.sh dumpling out out/pkg
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ inputs.release_tag }}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" out/pkg/* --clobber
+          else
+            gh release create "$TAG" \
+              --title "Fastboot package: dumpling (OnePlus 5T) 5.3.0.10" \
+              --notes-file out/pkg/README-刷机说明.md \
+              --latest=false \
+              out/pkg/*
+          fi

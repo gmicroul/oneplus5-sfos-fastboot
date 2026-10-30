@@ -1,0 +1,47 @@
+# @DEVNAME@ (@DEVICE@) SailFish OS 5.3.0.10 fastboot 刷机包
+
+由 GitHub Actions 从根文件系统快照自动构建（fastboot CI）。
+
+## 文件
+
+| 文件 | 说明 |
+| --- | --- |
+| `boot.img` | 引导镜像（5/5T 通用，内核内嵌全部 8 个 DTB） |
+| `userdata.img.gz.part-*` | 系统镜像分片（合并解压后 8GiB，ext4 label=userdata） |
+| `flash.sh` | 一键刷机（自动合并分片→校验→解压→刷入） |
+| `join-and-verify.sh` | 只合并分片+校验+解压 |
+| `SHA256SUMS` | 校验和 |
+| `README-刷机说明.md` | 本说明 |
+
+## 刷机步骤（Linux/macOS）
+
+1. （可选）校验：`sha256sum -c SHA256SUMS --ignore-missing`
+2. 手机进入 fastboot（关机后按住 **音量上 + 电源**），连接电脑
+3. 一键刷机：
+
+   ```sh
+   sh flash.sh
+   ```
+
+   或手动：
+
+   ```sh
+   sh join-and-verify.sh
+   fastboot flash boot boot.img
+   fastboot -S 256M flash userdata userdata.img
+   fastboot reboot
+   ```
+
+## 注意
+
+- 前置：手机已刷 OOS 10.0.1 firmware 底包
+- **切勿执行 `fastboot format userdata`**（会清掉刚写入的系统）
+- 镜像已清除个人数据（用户文件/账号/WiFi/锁屏码/日志），
+  machine-id 与 SSH 主机密钥为构建时重新生成
+- 首次开机较慢：自动扩展 userdata 分区并进入初始向导
+- 向导指纹设置会要求先验证锁屏码，然后正常录入；教程步骤已跳过
+
+## 已知问题（本移植）
+
+- WebGL 不可用
+- B 站等网页视频可能跳 "cannot open link"（可将浏览器 UA 设为桌面版后再试）
