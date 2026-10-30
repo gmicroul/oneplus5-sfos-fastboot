@@ -21,7 +21,20 @@ trap cleanup EXIT
 echo "== create ext4 image (8GiB, label=userdata) =="
 rm -f "$IMG"
 truncate -s 8G "$IMG"
-mke2fs -t ext4 -F -L userdata -O 64bit,metadata_csum,^orphan_file "$IMG" >/dev/null
+# orphan_file must stay disabled: the device runs kernel 4.4 which cannot mount it.
+# e2fsprogs >= 1.47 enables it by default; e2fsprogs 1.46 does not know the option.
+ORPHAN_OPT=""
+TMPFS="$(mktemp)"
+truncate -s 8M "$TMPFS"
+if mke2fs -q -F -t ext4 -O ^orphan_file "$TMPFS" >/dev/null 2>&1; then
+    ORPHAN_OPT=",^orphan_file"
+fi
+rm -f "$TMPFS"
+mke2fs -t ext4 -F -L userdata -O "64bit,metadata_csum${ORPHAN_OPT}" "$IMG" >/dev/null
+if dumpe2fs -h "$IMG" 2>/dev/null | grep -q "orphan_file"; then
+    echo "ERROR: orphan_file feature is present (device kernel 4.4 cannot mount this)"
+    exit 1
+fi
 mount -o loop "$IMG" "$MNT"
 H="$MNT/halium-rootfs"
 
